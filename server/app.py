@@ -6,7 +6,8 @@ from server.engine import InferenceEngine
 from server.monitor import Monitor
 
 app = FastAPI(title="TinyServe", version="0.1.0")
-engine = InferenceEngine()
+import os
+engine = InferenceEngine(os.environ.get("MODEL_DIR", "models"))
 monitor = Monitor()
 
 
@@ -72,7 +73,7 @@ def dashboard():
         h2 { color: #aaa; margin-top: 24px; }
         textarea { width: 100%; height: 80px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #333; padding: 10px; font-size: 14px; }
         button { background: #00c896; color: #0f0f0f; border: none; padding: 10px 24px; font-size: 14px; cursor: pointer; margin-top: 8px; }
-        #output { margin-top: 16px; padding: 16px; background: #1a1a1a; border: 1px solid #333; min-height: 100px; white-space: pre-wrap; }
+        #output { margin-top: 16px; padding: 16px; background: #1a1a1a; border: 1px solid #333; min-height: 100px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; }
         #stats { margin-top: 12px; color: #888; font-size: 13px; }
         .metrics { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; }
         .metric { background: #1a1a1a; border: 1px solid #333; padding: 16px; min-width: 140px; }
