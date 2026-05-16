@@ -40,21 +40,29 @@ class InferenceEngine:
         return prompt
 
     def generate(self, prompt, max_tokens=50, temperature=0.7, top_k=50, top_p=0.9):
-        """Generate text token-by-token, yielding each token and returning stats."""
+        """Generate text with KV cache — only processes one new token per step."""
         formatted = self._format_prompt(prompt)
         input_ids = self.tokenizer.encode(formatted, return_tensors="pt")
+        prompt_len = input_ids.shape[1]
         generated = input_ids[0].tolist()
-        prompt_len = len(generated)
 
         ttft = None
         start = time.perf_counter()
         seed = int(time.perf_counter() * 1000) % (2**31)
         prev_text = ""
+        past_key_values = None
 
         with torch.no_grad():
             for i in range(max_tokens):
-                inputs = torch.tensor([generated])
-                outputs = self.model(inputs)
+                if past_key_values is None:
+                    # first pass: process entire prompt
+                    outputs = self.model(input_ids, use_cache=True)
+                else:
+                    # subsequent passes: only process the new token
+                    new_token = torch.tensor([[generated[-1]]])
+                    outputs = self.model(new_token, past_key_values=past_key_values, use_cache=True)
+
+                past_key_values = outputs.past_key_values
                 logits = outputs.logits[0, -1, :].numpy()
 
                 token_id = sample(logits, temperature, top_k, top_p, seed + i)
@@ -67,7 +75,6 @@ class InferenceEngine:
                 if token_id == self.tokenizer.eos_token_id:
                     break
 
-                # decode all generated tokens to get proper spacing
                 full_text = self.tokenizer.decode(generated[prompt_len:], skip_special_tokens=True)
                 new_chars = full_text[len(prev_text):]
                 prev_text = full_text
